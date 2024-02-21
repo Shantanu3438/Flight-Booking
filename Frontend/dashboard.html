@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Booking Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Flight Booking Dashboard</h1>
+        <div id="logged-in-user"></div>
+        <button onclick="fetchUserBookings()">My Bookings</button>
+        <button id="logout-btn" onclick="logout()">Logout</button>
+        <div class="booking-form">
+            <h2>Book a Flight</h2>
+            <input type="text" id="flight-number" placeholder="Flight Number">
+            <!-- <input type="text" id="seat-number" placeholder="Seat Number"> -->
+            <button onclick="bookFlight()">Book Flight</button>
+        </div>
+        <div class="search-form">
+            <h2>Search Flights</h2>
+            <input type="text" id="search-date" placeholder="Date (YYYY-MM-DD)">
+            <button onclick="searchFlights()">Search</button>
+        </div>
+        <p>Search results</p>
+        <div id="search-results">
+            <!-- Search results will be displayed here -->
+        </div>
+        <p>Your bookings</p>
+        <div id="your-bookings">
+        </div>
+    </div>
+    
+    <script>
+async function searchFlights() {
+    const searchDate = document.getElementById('search-date').value;
+    
+    try {
+        const response = await fetch('http://localhost:8000/flights/filter/',
+        {method:'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            datetime:searchDate
+        })}
+        );
+        if (response.ok) {
+            const flights = await response.json();
+            displaySearchResults(flights);
+        } else {
+            console.error('Error searching for flights:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error searching for flights:', error);
+    }
+}
+
+function displaySearchResults(flights) {
+    const searchResultsDiv = document.getElementById('search-results');
+    searchResultsDiv.innerHTML = ''; // Clear previous results
+    
+    if (flights.length === 0) {
+        searchResultsDiv.textContent = 'No flights found.';
+    } else {
+        const ul = document.createElement('ul');
+        flights.forEach(function(flight) {
+            const li = document.createElement('li');
+            li.textContent = 'Flight Number: ' + flight.flight_number + ', Date: ' + flight.date_and_time + ', Available Seats: ' + flight.total_seats;
+            ul.appendChild(li);
+        });
+        searchResultsDiv.appendChild(ul);
+    }
+}
+
+
+function displayLoggedInUser() {
+    const user = localStorage.getItem('user');
+    const token = localStorage.getItem('token')
+    if (user) {
+        const username = user
+        if (username) {
+            const userElement = document.getElementById('logged-in-user');
+            userElement.textContent = 'Logged in as: ' + username;
+        } else {
+            console.error('Unable to retrieve user information.');
+        }
+    } else {
+        console.error('User ID not found in localStorage.');
+    }
+}
+window.onload = displayLoggedInUser();
+
+
+async function fetchUserBookings() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        console.error('Token not found in localStorage.');
+        return;
+    }
+    
+    try {
+        const response = await fetch('http://localhost:8000/flights/booked/', {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Token ' + token
+            }
+        });
+        if (response.ok) {
+            const bookings = await response.json();
+            displayUserBookings(bookings);
+        } else {
+            console.error('Error fetching user bookings:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error fetching user bookings:', error);
+    }
+}
+
+// Function to display the user's bookings as <p> tags within the specified <div> element
+    function displayUserBookings(bookings) {
+    const yourBookingsDiv = document.getElementById('your-bookings');
+    yourBookingsDiv.innerHTML = ''; // Clear previous bookings
+    
+    if (bookings.length === 0) {
+        const p = document.createElement('p');
+        p.textContent = 'No bookings found.';
+        yourBookingsDiv.appendChild(p);
+    } else {
+        bookings.forEach(function(booking) {
+            const p = document.createElement('p');
+            p.textContent = 'Flight Number: ' + booking.flight_number + ', Seat: ' + booking.seat_number + ', Date: ' + booking.date_created;
+            yourBookingsDiv.appendChild(p);
+        });
+    }
+}
+
+async function bookFlight() {
+    const flightNumber = document.getElementById('flight-number').value;
+    
+    try {
+        const response = await fetch('http://localhost:8000/flights/booking/' + flightNumber, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Token ' + localStorage.getItem('token')
+            }
+        });
+        if (response.ok) {
+            // Booking successful
+            alert('Booking for flight ' + flightNumber +' has been successfully made.');
+        } else {
+            const data = await response.json();
+            console.error('Error booking flight:', data.message);
+            alert('Error: ' + data.message); // Display error message
+        }
+    } catch (error) {
+        console.error('Error booking flight:', error);
+        alert('Error: Failed to book the flight.'); // Display error message
+    }
+}
+
+function logout() {
+    localStorage.removeItem('token'); // Remove the token from localStorage
+    localStorage.removeItem('user'); // Remove the user data from localStorage if needed
+    window.location.href = 'login.html'; // Redirect to the login page
+}
+
+    </script>
+</body>
+</html>
