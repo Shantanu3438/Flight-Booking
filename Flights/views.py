@@ -63,13 +63,14 @@ def book_flight(request, flight_number):
     if flight.total_seats <= 0:
         return Response({"message": "No available seats for this flight."}, status=status.HTTP_400_BAD_REQUEST)
 
+    print(flight.total_seats)
     # Allocate a seat number and create a booking
-    seat_number = flight.total_seats - flight.total_seats + 1
+    seat_number = flight.total_seats - flight.available_seats + 1
     user = request.user  # Get the authenticated user
     booking = Booking.objects.create(flight=flight, seat_number=seat_number, user=user)
 
     # Update available seats count
-    flight.total_seats -= 1
+    flight.available_seats -= 1
     flight.save()
 
     return Response({"message": "Booking successful.", "booking_id": booking.id, "seat_number": seat_number}, status=status.HTTP_201_CREATED)
